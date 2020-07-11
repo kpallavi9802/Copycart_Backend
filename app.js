@@ -5,7 +5,6 @@ const { buildSchema } = require('graphql');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs')
 
-const Event = require('./models/event');
 const User = require('./models/UserSchema');
 const Product = require('./models/ProductSchema');
 const Order=require('./models/OrderSchema');
@@ -19,15 +18,6 @@ app.use(
     '/graphql',
     graphqlHttp({
       schema: buildSchema(`
-          type Event {
-            _id: ID!
-            title: String!
-            description: String!
-            price: Float!
-            date: String!
-          }
-
-
           input Name{ 
             firstname:String,
             middlename:String,
@@ -63,6 +53,7 @@ app.use(
           type User {
             _id:ID!
             email: String,
+            password:String,
             name:Nameone,
             address:Addressone,
             usertype:String,
@@ -86,41 +77,37 @@ app.use(
           }
 
           type ProductOne{
-            producttype:String!,
-            brand:String!,
-            color:String!,
-            size:String!
-            description:String!
+            _id:ID!,
+            producttype:String,
+            brand:String,
+            color:String,
+            size:String
+            description:String
           }
 
           input OrderInput {
             user_id:String!,
             product_id:String!,
             status:String!,
+            order_at:String!
           }
 
           type OrderDetails{
+            _id:ID!
             user_id:String!,
             product_id:String!,
             status:String!,
-            orderAt:String!,
+            order_at:String,
 
           }
 
-
-          input EventInput {
-            title: String!
-            description: String!
-            price: Float!
-            date: String!
+          type Queries {
+              productall:[ProductOne!]!
+              orderall:[OrderDetails!]!
+              productbyID(id:ID!):[ProductOne!]!
+              orderbyID(id:ID!):[OrderDetails!]
           },
-
-
-          type RootQuery {
-              events: [Event!]!
-          },
-          type RootMutation {
-              createEvent(eventInput: EventInput): Event
+          type Mutations {
               createUser(userInput: UserInput): User
               createProduct(productInput:ProductInput):ProductOne
               createOrder(orderInput:OrderInput):OrderDetails
@@ -128,59 +115,54 @@ app.use(
 
 
           schema {
-              query: RootQuery
-              mutation: RootMutation
+              query: Queries
+              mutation: Mutations
+              
           }
       `),
       rootValue: {
-        events: () => {
-          return Event.find()
+        
+        createOrder: args => {
+          const event = new Order({
+            user_id:args.orderInput.user_id,
+            product_id:args.orderInput.product_id,
+            status:args.orderInput.status,
+            orderAt:new Date(args.orderInput.order_at)
+          });
+          return event
+            .save()
+            .then(result => {
+              console.log(result);
+              return { ...result._doc, _id: result._doc._id.toString(),order_at:result._doc.orderAt.toString() };
+            })
+            .catch(err => {
+              console.log(err);
+              throw err;
+            });
+        },
+
+        orderall: () => {
+          return Order.find()
             .then(events => {
               return events.map(event => {
-                return { ...event._doc, _id: event.id };
+                return { ...event._doc, _id: event.id,order_at:event.orderAt.toString()};
               });
             })
             .catch(err => {
               throw err;
             });
         },
-        createEvent: args => {
-          const event = new Event({
-            title: args.eventInput.title,
-            description: args.eventInput.description,
-            price: +args.eventInput.price,
-            date: new Date(args.eventInput.date)
-          });
-          return event
-            .save()
-            .then(result => {
-              console.log(result);
-              return { ...result._doc, _id: result._doc._id.toString() };
+        orderbyID: ({id}) => {
+          return Order.find({"_id":id})
+            .then(events => {
+              return events.map(event => {
+                return { ...event._doc, _id: event.id,order_at:event.orderAt.toString()};
+              });
             })
             .catch(err => {
-              console.log(err);
               throw err;
             });
         },
-
-        createOrder: args => {
-          const event = new Order({
-            user_id:args.orderInput.user_id,
-            product_id:args.orderInput.product_id,
-            status:args.orderInput.status
-          });
-          return event
-            .save()
-            .then(result => {
-              console.log(result);
-              return { ...result._doc, _id: result._doc._id.toString() };
-            })
-            .catch(err => {
-              console.log(err);
-              throw err;
-            });
-        },
-
 
 
 
@@ -203,6 +185,43 @@ app.use(
               throw err;
             });
         },
+
+        productall: () => {
+          return Product.find()
+            .then(events => {
+              return events.map(event => {
+                return { ...event._doc, _id: event.id };
+              });
+            })
+            .catch(err => {
+              throw err;
+            });
+        },
+        productbyID: ({id}) => {
+          return Product.find({"_id":id})
+            .then(events => {
+              return events.map(event => {
+                return { ...event._doc, _id: event.id };
+              });
+            })
+            .catch(err => {
+              throw err;
+            });
+        },
+
+
+
+        // userall: () => {
+        //   return User.find()
+        //     .then(events => {
+        //       return events.map(event => {
+        //         return { ...event._doc, password: event.password, _id: event.id };
+        //       });
+        //     })
+        //     .catch(err => {
+        //       throw err;
+        //     });
+        // },
 
 
         createUser: args => {
@@ -231,6 +250,8 @@ app.use(
             });
         }
       },
+     
+      
       graphiql: true
     })
   )
