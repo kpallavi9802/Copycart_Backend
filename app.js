@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs')
 const Event = require('./models/event');
 const User = require('./models/UserSchema');
 const Product = require('./models/ProductSchema');
+const Order=require('./models/OrderSchema');
 
 const app = express();
 app.use(bodyParser.json());
@@ -60,7 +61,7 @@ app.use(
 
 
           type User {
-            _id: ID!
+            _id:ID!
             email: String,
             name:Nameone,
             address:Addressone,
@@ -92,8 +93,19 @@ app.use(
             description:String!
           }
 
+          input OrderInput {
+            user_id:String!,
+            product_id:String!,
+            status:String!,
+          }
 
+          type OrderDetails{
+            user_id:String!,
+            product_id:String!,
+            status:String!,
+            orderAt:String!,
 
+          }
 
 
           input EventInput {
@@ -111,6 +123,7 @@ app.use(
               createEvent(eventInput: EventInput): Event
               createUser(userInput: UserInput): User
               createProduct(productInput:ProductInput):ProductOne
+              createOrder(orderInput:OrderInput):OrderDetails
           },
 
 
@@ -149,6 +162,26 @@ app.use(
               throw err;
             });
         },
+
+        createOrder: args => {
+          const event = new Order({
+            user_id:args.orderInput.user_id,
+            product_id:args.orderInput.product_id,
+            status:args.orderInput.status
+          });
+          return event
+            .save()
+            .then(result => {
+              console.log(result);
+              return { ...result._doc, _id: result._doc._id.toString() };
+            })
+            .catch(err => {
+              console.log(err);
+              throw err;
+            });
+        },
+
+
 
 
         createProduct: args => {

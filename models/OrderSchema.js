@@ -5,8 +5,8 @@ var Schema = mongoose.Schema;
  //creating order schema
  var orderSchema = new Schema({
     order_id:Schema.Types.ObjectId,
-    email:{
-      type:String,
+    user_id:{
+      type:Schema.Types.ObjectId,
       ref:'Users'
     },
     product_id:{

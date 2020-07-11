@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon app.js"
   },
-  "author": "Biplaba Samantaray,Abhisek",
+  "author": "Biplaba Samantaray",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
