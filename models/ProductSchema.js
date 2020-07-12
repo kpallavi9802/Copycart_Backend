@@ -24,9 +24,16 @@ const Schema = mongoose.Schema;
     description:{
       type:String
     },
-    availability:Boolean,
-    price:Number,
-    addedAt:Date
+    availability:
+    {
+      type:Boolean
+    },
+    price: {
+      type:Number,
+    },
+    quantity:{
+      type:Number
+    },
     
  });
 
