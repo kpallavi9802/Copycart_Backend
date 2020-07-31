@@ -25,7 +25,7 @@ app.use(
   
 
 
-  mongoose.connect("mongodb+srv://Pallavi:1234abcd@cluster-copycart.e8hly.mongodb.net/CopyCart?retryWrites=true&w=majority",{useNewUrlParser: true,useUnifiedTopology: true,})
+  mongoose.connect("mongodb+srv://Pallavi:<password>@cluster-copycart.e8hly.mongodb.net/<dbname>?retryWrites=true&w=majority",{useNewUrlParser: true,useUnifiedTopology: true,})
     .then(() => {
         app.listen(3000);
         console.log("server started")
