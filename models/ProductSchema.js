@@ -11,7 +11,7 @@ const Schema = mongoose.Schema;
     },
     brand:{
       type:String,
-      enum:['Classmate','Ajanata','Cello','Glycer'],
+      enum:['Classmate','Ajanta','Cello','Glycer'],
     },
     color:{
       type:String,

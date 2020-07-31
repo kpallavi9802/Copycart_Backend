@@ -5,9 +5,58 @@ const Customer = require('../../models/CustomerSchema');
 const Seller = require('../../models/SellerSchema');
 const Product = require('../../models/ProductSchema');
 const Order=require('../../models/OrderSchema');
+const { buildSchema } = require('graphql');
+
+const products = async productIds => {
+  try {
+    const products = await Product.find({ _id: { $in: productIds } });
+    products.map(event => {
+      return {
+        ...event._doc,
+        _id: event.id,
+        addedAt: new Date(event._doc.addedAt).toISOString(),
+        addedBy: seller.bind(this, event.addedBy)
+      };
+    });
+    return products;
+  } catch (err) {
+    throw err;
+  }
+};
+
+const seller = async sellerId => {
+  try {
+    const seller = await Seller.findById(sellerId);
+    return {
+      ...seller._doc,
+      _id: seller.id,
+      password:null,
+      createdAt:new Date(seller._doc.createdAt).toISOString(),
+      addedProducts: products.bind(this, seller._doc.addedProducts)
+    };
+  } catch (err) {
+    throw err;
+  }
+};
+
+const customer = async customerId => {
+  try {
+    const customer = await Customer.findById(customerId);
+    return {
+      ...customer._doc,
+      _id: customer.id,
+      password:null,
+      createdAt:new Date(customer._doc.createdAt).toISOString()
+    };
+  } catch (err) {
+    throw err;
+  }
+};
+
 
 module.exports = {
           createOrder: async args => {
+            try{
             const productquery = await Product.findOne({ _id: args.orderInput.orderProduct });
             const customerquery = await Customer.findOne({ _id: args.orderInput.placedBy });          
             const order = new Order({
@@ -19,44 +68,56 @@ module.exports = {
             });
             order.subTotal = productquery.price * order.orderQuantity;
             const result = await order.save();
-            
-            
-            return {
+            let createdOrder = {
                ...result._doc,
                 _id: result._doc._id,
                 orderAt:new Date(result._doc.orderAt).toISOString(),
-                placedBy:{
-                  ...result._doc.placedBy._doc,
-                    _id:result._doc.placedBy.id,
-                    password:null
-                  
-                },
+                placedBy:customer.bind(this,result._doc.placedBy),
                 orderProduct:{
                   ...result._doc.orderProduct._doc,
                   _id:result._doc.orderProduct.id,
+                  addedAt:new Date(result._doc.orderProduct.addedAt).toISOString(),
 
                 }
-            };
+            }
+
+            const added = result._doc.orderProduct._doc.addedBy;
+            const sellerquery = await Seller.findOne({"_id":added});
+            if(!sellerquery)
+              throw new Error('No such seller found');
+            sellerquery.orderRequested.push(order);
+            sellerquery.save();
+
+            customerquery.placedOrder.push(order);
+            customerquery.save();
+
+            return createdOrder;
+
+          }catch(err){
+            throw err;
+          }
           },
 
         allOrder: () => {
           return Order.find().populate('placedBy').populate('orderProduct')
             .then(events => {
               return events.map(result => {
-                return { ...result._doc,
+                return {...result._doc,
                   _id: result.id,
                   orderAt:new Date(result._doc.orderAt).toISOString(),
                   placedBy:{
                     ...result._doc.placedBy._doc,
                       _id:result._doc.placedBy.id,
-                      password:null
+                      password:null,
+                      createdAt:new Date(result._doc.placedBy.createdAt).toISOString()
                     
                   },
                   orderProduct:{
                     ...result._doc.orderProduct._doc,
                     _id:result._doc.orderProduct.id,
+                    addedAt:new Date(result._doc.orderProduct.addedAt).toISOString(),
   
-                  }
+                  } 
                 };
               });
             })
@@ -76,12 +137,15 @@ module.exports = {
                   placedBy:{
                     ...result._doc.placedBy._doc,
                       _id:result._doc.placedBy.id,
-                      password:null
+                      password:null,
+                      createdAt:new Date(result._doc.placedBy.createdAt).toISOString(),
+                      
                     
                   },
                   orderProduct:{
                     ...result._doc.orderProduct._doc,
                     _id:result._doc.orderProduct.id,
+                    addedAt:new Date(result._doc.orderProduct.addedAt).toISOString(),
   
                   }
                 };
@@ -94,6 +158,7 @@ module.exports = {
         
         //Product Resolver
         createProduct:async args => {
+          try{
           const sellerquery = await Seller.findOne({ _id: args.productInput.addedBy });
           const event = new Product({
             category:args.productInput.category,
@@ -107,29 +172,32 @@ module.exports = {
             addedBy:args.productInput.addedBy,
             addedAt:new Date(args.productInput.addedAt)
           });
-          return event.save()
-            .then(result => {
-              return { 
-                ...result._doc, 
-                _id: result._doc._id,
-                addedAt:new Date(result._doc.addedAt).toISOString(),
-                // addedBy:{
-                //   ...result._doc.addedBy._doc,
-                //   _id:result._doc.addedBy.id,
-                //   password:null
-                // }
-              };
-            })
-            .catch(err => {
-              throw err;
-            });
+          const result = await event.save();
+          let createdProduct= { 
+            ...result._doc, 
+            _id: result._doc._id,
+            addedAt:new Date(result._doc.addedAt).toISOString(),
+            addedBy:seller.bind(this,result._doc.addedBy)
+          };
+          sellerquery.addedProducts.push(event);
+          await sellerquery.save();
+          return createdProduct;
+        }catch(err){
+          throw err;
+        }
+        
         },
 
         allProduct: () => {
-          return Product.find().populate('addedBy')
+          return Product.find()
             .then(events => {
               return events.map(event => {
-                return { ...event._doc, _id: event.id,addedAt:new Date(event._doc.addedAt).toISOString() };
+                return {
+                   ...event._doc,
+                   _id: event.id,
+                   addedAt:new Date(event._doc.addedAt).toISOString(),
+                   addedBy:seller.bind(this,event._doc.addedBy)
+                   };
               });
             })
             .catch(err => {
@@ -138,12 +206,13 @@ module.exports = {
         },
 
         productById: ({id}) => {
-          return Product.find({"_id":id}).populate('addedBy')
+          return Product.find({"_id":id})
             .then(events => {
               return events.map(event => {
                 return { ...event._doc,
                    _id: event.id,
-                   addedAt:new Date(event._doc.addedAt).toISOString()
+                   addedAt:new Date(event._doc.addedAt).toISOString(),
+                   addedBy:seller.bind(this,event._doc.addedBy)
                    };
               });
             })
@@ -174,7 +243,12 @@ module.exports = {
               return seller.save();
             })
             .then(result => {
-              return { ...result._doc, password: null, _id: result.id,createdAt:new Date(result._doc.createdAt).toISOString()};
+              return { ...result._doc, 
+                password: null,
+                 _id: result.id,
+                 createdAt:new Date(result._doc.createdAt).toISOString()
+
+                };
             })
             .catch(err => {
               throw err;
@@ -188,9 +262,7 @@ module.exports = {
                   ...event._doc,
                   password:null,_id:event.id,
                   createdAt:new Date(event._doc.createdAt).toISOString(),
-                  // addedProduct:{
-                  //   ...event._doc.addedProduct._doc
-                  // }
+                  
                 };
               });
             })
@@ -231,7 +303,12 @@ module.exports = {
            return Customer.find()
              .then(events => {
                return events.map(event => {
-                 return { ...event._doc,password:null,_id:event.id,createdAt:new Date(event._doc.createdAt).toISOString()};
+                 return { 
+                   ...event._doc,
+                   password:null,
+                   _id:event.id,
+                   createdAt:new Date(event._doc.createdAt).toISOString(),
+                }
                });
              })
              .catch(err => {
@@ -239,10 +316,18 @@ module.exports = {
              });
          },
          customerByEmail: ({email}) => {
-          return Customer.find({"email" :email})
+          return Customer.find({"email" :email}).populate('placedOrder')
             .then(events => {
               return events.map(event => {
-                return { ...event._doc,password:null,_id:event.id,createdAt:new Date(event._doc.createdAt).toISOString()};
+                return { ...event._doc,
+                  password:null,
+                  _id:event.id,
+                  createdAt:new Date(event._doc.createdAt).toISOString(),
+                  placedOrder:{
+                    ...event._doc.placedOrder._doc,
+                    _id:event._doc.placedOrder.id
+                  }
+                };
               });
             })
             .catch(err => {
@@ -253,7 +338,11 @@ module.exports = {
           return Customer.find({"_id":id})
             .then(events => {
               return events.map(event => {
-                return { ...event._doc,password:null,_id:event.id,createdAt:new Date(event._doc.createdAt).toISOString()};
+                return { ...event._doc,
+                  password:null,
+                  _id:event.id,
+                  createdAt:new Date(event._doc.createdAt).toISOString()
+                };
               });
             })
             .catch(err => {
@@ -265,14 +354,18 @@ module.exports = {
          customerAllOrder:({id}) =>{
            return Order.find({"placedBy":id})
            .then(events => {
-            return events.map(event => {
+            return events.map(result => {
               return { 
-                ...event._doc,
-                _id:event.id,
-                // placedBy:{
-                //   ...event._doc.placedBy._doc,
-                //   // _id:event._doc.placedBy.id
-                // }
+                ...result._doc,
+                  _id: result._doc._id,
+                  orderAt:new Date(result._doc.orderAt).toISOString(),
+                  placedBy:customer.bind(this,result._doc.placedBy),
+                  orderProduct:{
+                    ...result._doc.orderProduct._doc,
+                    _id:result._doc.orderProduct._id,
+                    // addedAt:new Date(result._doc.orderProduct.addedAt).toISOString(),
+  
+                  }
               };
             });
           })
@@ -317,7 +410,10 @@ module.exports = {
               return customer.save();
             })
             .then(result => {
-              return { ...result._doc, password: null, _id: result.id,createdAt:new Date(result._doc.createdAt).toISOString()};
+              return { ...result._doc, 
+                password: null, 
+                _id: result.id,
+                createdAt:new Date(result._doc.createdAt).toISOString()};
             })
             .catch(err => {
               throw err;

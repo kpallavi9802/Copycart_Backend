@@ -63,8 +63,8 @@ module.exports = buildSchema(`
             email:String!
             password:String
             contact:String!
-            addedProduct:[Product!]!
-            requestedOrder:[Order!]!
+            addedProducts:[Product!]!
+            orderRequested:[Order!]!
             approveOrder:Boolean
             createdAt:String!
 
@@ -127,6 +127,7 @@ module.exports = buildSchema(`
             customerById(id:ID!):[Customer]!
             customerByEmail(email:String!):[Customer]!
             customerAllOrder(id:ID!):[Order!]!
+            
 
             allSeller:[Seller!]!
             sellerById(id:ID!):[Seller!]!
