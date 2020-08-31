@@ -9,12 +9,16 @@ Copycart is an e-Commerce application intended to University students where they
 
 2. ### Connect to the Database
     > login into your MongoDB Atlas account 
+    
     > Deploy a Free Tier Cluster named CopyCart (or anything you desires to)
+    
     > Whitelist Your Connection IP Address
+    
     > Create a Database User for Your Cluster
+    
     > Connect to Your Cluster using connection URL, it seems something like this:
       
-      `mongodb+srv://<username>:<password>@clustername.mongodb.net/<dbname>?retryWrites=true&w=majority&useNewUrlParser=true&useUnifiedTopology=true"`
+      ```mongodb+srv://<username>:<password>@clustername.mongodb.net/<dbname>?retryWrites=true&w=majority&useNewUrlParser=true&useUnifiedTopology=true```
 	
       Replace <username><password>,<dbname> with your username, password 
       and Database name.
